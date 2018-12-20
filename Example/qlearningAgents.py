@@ -16,7 +16,7 @@ from game import *
 from learningAgents import ReinforcementAgent
 from featureExtractors import *
 
-import random,util,math
+import random,util,math	
 
 class QLearningAgent(ReinforcementAgent):
     """
