@@ -24,6 +24,7 @@ from util import *
 import time, os
 import traceback
 import sys
+from collections import deque
 
 #######################
 # Parts worth reading #
@@ -264,7 +265,7 @@ class Grid:
 
     def _unpackInt(self, packed, size):
         bools = []
-        if packed < 0: raise ValueError, "must be a positive integer"
+        if packed < 0: raise ValueError("must be a positive integer")
         for i in range(size):
             n = 2 ** (self.CELLS_PER_INT - i - 1)
             if packed >= n:
@@ -427,8 +428,8 @@ class GameStateData:
         for i, state in enumerate( self.agentStates ):
             try:
                 int(hash(state))
-            except TypeError, e:
-                print e
+            except TypeError(e):
+                print(e)
                 #hash(state)
         return int((hash(tuple(self.agentStates)) + 13*hash(self.food) + 113* hash(tuple(self.capsules)) + 7 * hash(self.score)) % 1048575 )
 
@@ -528,8 +529,9 @@ class Game:
         self.totalAgentTimes = [0 for agent in agents]
         self.totalAgentTimeWarnings = [0 for agent in agents]
         self.agentTimeout = False
-        import cStringIO
-        self.agentOutput = [cStringIO.StringIO() for agent in agents]
+        #import cStringIO
+        import io
+        self.agentOutput = [io.StringIO() for agent in agents]
 
     def getProgress(self):
         if self.gameOver:
@@ -564,12 +566,18 @@ class Game:
         sys.stderr = OLD_STDERR
 
 
-    def run( self ):
+    def run( self , numGames):
         """
         Main control loop for game play.
         """
         self.display.initialize(self.state.data)
         self.numMoves = 0
+        self.replay_mem = deque()
+        self.last_score = 0
+        self.local_cnt = 0
+        self.terminal = 0
+        self.ep_rew = 0
+        self.eps = 0
 
         ###self.display.initialize(self.state.makeObservation(1).data)
         # inform learning agents of the game start
@@ -599,7 +607,7 @@ class Game:
                             self.agentTimeout = True
                             self._agentCrash(i, quiet=True)
                             return
-                    except Exception,data:
+                    except Exception(data):
                         self._agentCrash(i, quiet=False)
                         self.unmute()
                         return
@@ -629,7 +637,7 @@ class Game:
                             skip_action = True
                         move_time += time.time() - start_time
                         self.unmute()
-                    except Exception,data:
+                    except Exception(data):
                         self._agentCrash(agentIndex, quiet=False)
                         self.unmute()
                         return
@@ -638,6 +646,8 @@ class Game:
                 self.unmute()
             else:
                 observation = self.state.deepCopy()
+            
+            self.last_state = self.state
 
             # Solicit an action
             action = None
@@ -678,7 +688,7 @@ class Game:
                         self.unmute()
                         return
                     self.unmute()
-                except Exception,data:
+                except Exception(data):
                     self._agentCrash(agentIndex)
                     self.unmute()
                     return
@@ -691,7 +701,7 @@ class Game:
             if self.catchExceptions:
                 try:
                     self.state = self.state.generateSuccessor( agentIndex, action )
-                except Exception,data:
+                except Exception(data):
                     self.mute(agentIndex)
                     self._agentCrash(agentIndex)
                     self.unmute()
@@ -699,6 +709,36 @@ class Game:
             else:
                 self.state = self.state.generateSuccessor( agentIndex, action )
 
+            if self.state.isWin() or self.state.isLose():
+                self.terminal = 1
+
+            if agentIndex == 0:
+                self.current_score = self.state.getScore()
+                reward = self.current_score - self.last_score
+                self.last_score = self.current_score
+
+                if reward > 20:
+                    self.last_reward = 50.    # Eat ghost   (Yum! Yum!)
+                elif reward > 0:
+                    self.last_reward = 10.    # Eat food    (Yum!)
+                elif reward < -10:
+                    self.last_reward = -500.  # Get eaten   (Ouch!) -500
+                    self.won = False
+                elif reward < 0:
+                    self.last_reward = -1.    # Punish time (Pff..)
+
+                self.ep_rew = self.ep_rew + self.last_reward
+
+                experience = (self.last_state, float(self.last_reward), action, self.state, self.terminal)
+                self.replay_mem.append(experience)
+                if len(self.replay_mem) > 100000:
+                    self.replay_mem.popleft()
+
+                if self.local_cnt > 40:
+                    agent.train(self.replay_mem)
+                    self.eps = agent.eps
+                    
+                self.local_cnt += 1
             # Change the display
             self.display.update( self.state.data )
             ###idx = agentIndex - agentIndex % 2 + 1
@@ -715,15 +755,19 @@ class Game:
                 boinc.set_fraction_done(self.getProgress())
 
         # inform a learning agent of the game result
+        print("# %4d | steps_t: %5d | r: %12f | e: %10f " %
+                         (numGames,self.local_cnt, self.ep_rew, self.eps))
+
         for agentIndex, agent in enumerate(self.agents):
             if "final" in dir( agent ) :
                 try:
                     self.mute(agentIndex)
                     agent.final( self.state )
                     self.unmute()
-                except Exception,data:
+                except Exception(data):
                     if not self.catchExceptions: raise
                     self._agentCrash(agentIndex)
                     self.unmute()
                     return
         self.display.finish()
+        

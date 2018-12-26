@@ -48,6 +48,9 @@ from util import manhattanDistance
 import util, layout
 import sys, types, time, random, os
 
+import qlearningAgents
+import ghostAgents
+
 ###################################################
 # YOUR INTERFACE TO THE PACMAN WORLD: A GameState #
 ###################################################
@@ -289,11 +292,11 @@ class ClassicGameRules:
         if state.isLose(): self.lose(state, game)
 
     def win( self, state, game ):
-        if not self.quiet: print "Pacman emerges victorious! Score: %d" % state.data.score
+        if not self.quiet: print("Pacman emerges victorious! Score: %d" % state.data.score)
         game.gameOver = True
 
     def lose( self, state, game ):
-        if not self.quiet: print "Pacman died! Score: %d" % state.data.score
+        if not self.quiet: print("Pacman died! Score: %d" % state.data.score)
         game.gameOver = True
 
     def getProgress(self, game):
@@ -301,9 +304,9 @@ class ClassicGameRules:
 
     def agentCrash(self, game, agentIndex):
         if agentIndex == 0:
-            print "Pacman crashed"
+            print("Pacman crashed")
         else:
-            print "A ghost crashed"
+            print("A ghost crashed")
 
     def getMaxTotalTime(self, agentIndex):
         return self.timeout
@@ -540,11 +543,17 @@ def readCommand( argv ):
     noKeyboard = options.gameToReplay == None and (options.textGraphics or options.quietGraphics)
     pacmanType = loadAgent(options.pacman, noKeyboard)
     agentOpts = parseAgentArgs(options.agentArgs)
+
+    agentOpts['width'] = layout.getLayout(options.layout).width
+    agentOpts['height'] = layout.getLayout(options.layout).height
+
     if options.numTraining > 0:
         args['numTraining'] = options.numTraining
         if 'numTraining' not in agentOpts: agentOpts['numTraining'] = options.numTraining
-    pacman = pacmanType(**agentOpts) # Instantiate Pacman with agentArgs
+    pacman = pacmanType(agentOpts) # Instantiate Pacman with agentArgs
     args['pacman'] = pacman
+    pacman.width = agentOpts['width']
+    pacman.height = agentOpts['height']
 
     # Don't display training games
     if 'numTrain' in agentOpts:
@@ -573,7 +582,7 @@ def readCommand( argv ):
 
     # Special case: recorded games don't use the runGames method or args structure
     if options.gameToReplay != None:
-        print 'Replaying recorded game %s.' % options.gameToReplay
+        print('Replaying recorded game %s.' % options.gameToReplay)
         import cPickle
         f = open(options.gameToReplay)
         try: recorded = cPickle.load(f)
@@ -633,7 +642,7 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
     games = []
 
     for i in range( numGames ):
-        beQuiet = i < numTraining
+        beQuiet = i < numTraining #Guessing this set beQuiet to true or false
         if beQuiet:
                 # Suppress output and graphics
             import textDisplay
@@ -643,7 +652,7 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
             gameDisplay = display
             rules.quiet = False
         game = rules.newGame( layout, pacman, ghosts, gameDisplay, beQuiet, catchExceptions)
-        game.run()
+        game.run(i)
         if not beQuiet: games.append(game)
 
         if record:
@@ -658,10 +667,10 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
         scores = [game.state.getScore() for game in games]
         wins = [game.state.isWin() for game in games]
         winRate = wins.count(True)/ float(len(wins))
-        print 'Average Score:', sum(scores) / float(len(scores))
-        print 'Scores:       ', ', '.join([str(score) for score in scores])
-        print 'Win Rate:      %d/%d (%.2f)' % (wins.count(True), len(wins), winRate)
-        print 'Record:       ', ', '.join([ ['Loss', 'Win'][int(w)] for w in wins])
+        print('Average Score:', sum(scores) / float(len(scores)))
+        print('Scores:       ', ', '.join([str(score) for score in scores]))
+        print('Win Rate:      %d/%d (%.2f)' % (wins.count(True), len(wins), winRate))
+        print('Record:       ', ', '.join([ ['Loss', 'Win'][int(w)] for w in wins]))
 
     return games
 
