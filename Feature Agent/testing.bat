@@ -1,0 +1,3 @@
+REM FOR /D %%n IN (./saves/FeatureSmallGridFinal/*) DO python .\pacman.py -p FeatureTestAgent -l smallGrid -n 101 -x 1 -q -s saves\FeatureSmallGridFinal\%%n --csv testing/smallGrid.csv
+FOR /D %%n IN (./saves/FeatureMediumGridFinal/*) DO python .\pacman.py -p FeatureTestAgent -l mediumGrid -n 101 -x 1 -q -s saves\FeatureMediumGridFinal\%%n --csv testing/mediumGrid.csv
+FOR /D %%n IN (./saves/FeatureSmallClassicFinal/*) DO python .\pacman.py -p FeatureTestAgent -l smallClassic -n 101 -x 1 -q -s saves\FeatureSmallClassicFinal\%%n --csv testing/smallClassic.csv
