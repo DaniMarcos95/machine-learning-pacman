@@ -1,6 +1,6 @@
 # Used code from
-# DQN implementation by Tejas Kulkarni found at
-# https://github.com/mrkulk/deepQN_tensorflow
+# DQN implementation by Tycho van der Ouderaa found at
+# https://github.com/tychovdo/PacmanDQN.git
 
 # Used code from:
 # The Pacman AI projects were developed at UC Berkeley found at
